@@ -123,6 +123,7 @@ public class PlayFragment extends BaseLazyFragment {
     private Handler mHandler;
 
     private final long videoDuration = -1;
+    private String mFinalUrl;
 
     @Override
     protected int getLayoutResID() {
@@ -278,6 +279,11 @@ public class PlayFragment extends BaseLazyFragment {
             @Override
             public void exit() {
                 activity.onBackPressed();
+            }
+
+            @Override
+            public void cast() {
+                activity.showCastDialog();
             }
         });
         mVideoView.setVideoController(mController);
@@ -543,7 +549,7 @@ public class PlayFragment extends BaseLazyFragment {
         if (autoRetryCount > 0 && url.contains(".m3u8")) {
             url = "http://home.jundie.top:666/unBom.php?m3u8=" + url;//尝试去bom头再次播放
         }
-        String finalUrl = url;
+        mFinalUrl = url;
         if (mActivity == null || !isAdded()) return;
         requireActivity().runOnUiThread(new Runnable() {
             @Override
@@ -552,7 +558,7 @@ public class PlayFragment extends BaseLazyFragment {
                 if (mVideoView != null) {
                     mVideoView.release();
 
-                    if (finalUrl != null) {
+                    if (mFinalUrl != null) {
                         try {
                             int playerType = mVodPlayerCfg.getInt("pl");
                             if (playerType >= 10) {
@@ -561,7 +567,7 @@ public class PlayFragment extends BaseLazyFragment {
                                 setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + "进行播放", true, false);
                                 boolean callResult = false;
                                 long progress = getSavedProgress(progressKey);
-                                callResult = PlayerHelper.runExternalPlayer(playerType, requireActivity(), finalUrl, playTitle, playSubtitle, headers, progress);
+                                callResult = PlayerHelper.runExternalPlayer(playerType, requireActivity(), mFinalUrl, playTitle, playSubtitle, headers, progress);
                                 setTip("调用外部播放器" + PlayerHelper.getPlayerName(playerType) + (callResult ? "成功" : "失败"), callResult, !callResult);
                                 return;
                             }
@@ -572,9 +578,9 @@ public class PlayFragment extends BaseLazyFragment {
                         PlayerHelper.updateCfg(mVideoView, mVodPlayerCfg);
                         mVideoView.setProgressKey(progressKey);
                         if (headers != null) {
-                            mVideoView.setUrl(finalUrl, headers);
+                            mVideoView.setUrl(mFinalUrl, headers);
                         } else {
-                            mVideoView.setUrl(finalUrl);
+                            mVideoView.setUrl(mFinalUrl);
                         }
                         mVideoView.start();
                         mController.resetSpeed();
@@ -735,18 +741,6 @@ public class PlayFragment extends BaseLazyFragment {
 
         }
         mController.setPlayerConfig(mVodPlayerCfg);
-    }
-
-    public boolean onBackPressed() {
-        int requestedOrientation = getActivity().getRequestedOrientation();
-        if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT || requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT || requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-            mController.mLandscapePortraitBtn.setText("竖屏");
-        }
-//        if (mController.onBackPressed()) {
-//            return true;
-//        }
-        return false;
     }
 
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -1337,6 +1331,10 @@ public class PlayFragment extends BaseLazyFragment {
                 }
             }
         });
+    }
+
+    public String getFinalUrl(){
+        return mFinalUrl;
     }
 
     boolean checkVideoFormat(String url) {
